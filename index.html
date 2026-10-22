@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cloudflare Function Live Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 420px; margin: 3rem auto; padding: 0 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; }
+    form { display: flex; flex-direction: column; gap: 0.75rem; }
+    input, textarea { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+    button { padding: 0.6rem; border: none; border-radius: 4px; background: #2563eb; color: white; cursor: pointer; font-weight: 600; }
+    #status { font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Cloudflare Function Live Test</h1>
+  <p>This page tests the real Cloudflare Pages Function + Turnstile integration, matching the Form Hub dashboard's Cloudflare Functions guide exactly.</p>
+
+  <div class="card">
+    <form id="contact-form">
+      <div class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY"></div>
+
+      <label>Name <input type="text" name="name" required></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Message <textarea name="message" required></textarea></label>
+
+      <!-- aria-hidden goes on the wrapper, never on a focusable element itself -->
+      <div aria-hidden="true" style="position:absolute;left:-9999px">
+        <label for="hp-website">Leave this field blank</label>
+        <input type="text" id="hp-website" name="hp_website" autocomplete="off" tabindex="-1">
+      </div>
+      <input type="hidden" name="ts" id="form-ts">
+
+      <button type="submit">Send</button>
+      <p id="status"></p>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('form-ts').value = Date.now();
+
+    document.getElementById('contact-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Sending...';
+
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/api/submit-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        statusEl.textContent = 'Success! Check the Form Hub dashboard.';
+        e.target.reset();
+        document.getElementById('form-ts').value = Date.now();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        statusEl.textContent = 'Error: ' + (body.error || res.status);
+      }
+      if (window.turnstile) window.turnstile.reset();
+    });
+  </script>
+</body>
+</html>
